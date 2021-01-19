@@ -9,21 +9,13 @@ using namespace std;
 
 mutex mute;
 
-void minimum (const vector<int>& vec, int left, int right, int num_thread, int& min) {
-    mute.lock();  //ставим блокировку
-    cout << "ID of using thread is " << this_thread::get_id() << endl; //выводим id потока
+void minimum (const vector<int>& vec, int left, int right, int& min) {
     min = vec[left];
     for (int i = left + 1; i < right; ++i) {
         if (min > vec[i]) {
             min = vec[i];
         }
     }
-    if (num_thread != 0) {
-        cout << "Minimum for " << num_thread << "_st thread is " << min << endl;
-    } else {
-        cout << "Minimum for main thread is " << min << endl;
-    }
-    mute.unlock();  //убираем блокировку
 }
 
 int main() {
@@ -43,18 +35,20 @@ int main() {
         int step = vec.size() / t;
         int start = 0;
         for (int i = 0; i < t; ++i) {
-            threads[i] = new thread(minimum, ref(vec), start, start + step, i + 1, ref(vec_min[i]));
+            threads[i] = new thread(minimum, ref(vec), start, start + step, ref(vec_min[i]));
             start += step;
         }
         for (int i = 0; i < t; ++i) {
             threads[i]->join();  //запускаем каждый поток с защитой ресурсов
-        }
-        int main_min = 0;
-        minimum(vec_min, 0, t, 0, main_min);  //используем главный поток
-        auto end_time = std::chrono::steady_clock::now();
-        for (int i = 0; i < t; ++i) {
+            mute.lock();  //ставим блокировку
+            cout << "Minimum for " << i + 1 << "_st thread is " << vec_min[i] << endl;
+            mute.unlock();  //убираем блокировку
             delete threads[i];  //чистим память
         }
+        int main_min = 0;
+        minimum(vec_min, 0, t, main_min);  //используем главный поток
+        cout << "Minimum for main thread is " << main_min << endl;
+        auto end_time = std::chrono::steady_clock::now();
         duration = chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time).count();
         if (best_duration > duration) {
             best_duration = duration;
